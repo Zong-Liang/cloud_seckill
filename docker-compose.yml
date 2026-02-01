@@ -1,0 +1,116 @@
+services:
+  # -----------------------------------------------------------------------------
+  # 1. Nacos (注册中心 & 配置中心)
+  # -----------------------------------------------------------------------------
+  nacos:
+    image: nacos/nacos-server:v2.3.1
+    container_name: seckill-nacos
+    environment:
+      - MODE=standalone
+      - AUTH_ENABLED=false
+    ports:
+      - "8848:8848"
+      - "9848:9848" # gRPC 端口 (必须映射，否则 Spring Boot 3 报错)
+      - "9849:9849"
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 2. MySQL 8.0 (数据库)
+  # -----------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: seckill-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: seckill_order # 默认创建一个库，后续我们还会建 stock 库
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./data/mysql:/var/lib/mysql # 数据持久化挂载到当前目录下
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 3. Redis (缓存)
+  # -----------------------------------------------------------------------------
+  redis:
+    image: redis:7.2
+    container_name: seckill-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass "root" --appendonly yes
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 4. RocketMQ NameServer
+  # -----------------------------------------------------------------------------
+  rmqnamesrv:
+    image: apache/rocketmq:5.2.0
+    container_name: seckill-rmqnamesrv
+    ports:
+      - "9876:9876"
+    command: sh mqnamesrv
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 5. RocketMQ Broker
+  # -----------------------------------------------------------------------------
+  broker:
+    image: apache/rocketmq:5.2.0
+    container_name: seckill-broker
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    environment:
+      - NAMESRV_ADDR=rmqnamesrv:9876
+    # ⚠️ 关键配置：强制指定 brokerIP1 为宿主机 IP，解决本地开发连接不上 Broker 的问题
+    command: >
+      sh -c "echo 'brokerClusterName = DefaultCluster
+      brokerName = broker-a
+      brokerId = 0
+      deleteWhen = 04
+      fileReservedTime = 48
+      brokerRole = ASYNC_MASTER
+      flushDiskType = ASYNC_FLUSH
+      brokerIP1 = 127.0.0.1' > ../conf/broker.conf && sh mqbroker -n rmqnamesrv:9876 -c ../conf/broker.conf"
+    depends_on:
+      - rmqnamesrv
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 6. RocketMQ Dashboard (可视化控制台)
+  # 访问地址: http://localhost:8081
+  # -----------------------------------------------------------------------------
+  rmqdashboard:
+    image: apacherocketmq/rocketmq-dashboard:latest
+    container_name: seckill-rmq-dashboard
+    ports:
+      - "8081:8082"
+    environment:
+      - JAVA_OPTS=-Drocketmq.namesrv.addr=rmqnamesrv:9876
+    depends_on:
+      - rmqnamesrv
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 7. Sentinel Dashboard (流量监控控制台)
+  # 访问地址: http://localhost:8858 (账号密码 sentinel/sentinel)
+  # -----------------------------------------------------------------------------
+  sentinel:
+    image: bladex/sentinel-dashboard:1.8.6
+    container_name: seckill-sentinel
+    ports:
+      - "8858:8858"
+    networks:
+      - seckill-net
+
+networks:
+  seckill-net:
+    driver: bridge
