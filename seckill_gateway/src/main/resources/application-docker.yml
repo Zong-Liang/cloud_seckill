@@ -1,0 +1,111 @@
+# ========================================
+# Docker 环境配置 - 网关服务
+# ========================================
+
+server:
+  port: 9000
+
+spring:
+  application:
+    name: seckill-gateway
+
+  # Nacos 配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:nacos:8848}
+        namespace: public
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:nacos:8848}
+        file-extension: yml
+        namespace: public
+
+    # Gateway 路由配置
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 库存服务路由
+        - id: stock-service
+          uri: lb://seckill-stock
+          predicates:
+            - Path=/api/stock/**
+          filters:
+            - StripPrefix=1
+
+        # 订单服务路由
+        - id: order-service
+          uri: lb://seckill-order
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+
+        # 用户服务路由
+        - id: user-service
+          uri: lb://seckill-order
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+
+      # 跨域配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+# 认证配置
+auth:
+  whitelist:
+    - /api/user/login
+    - /api/user/register
+    - /api/stock/goods/list
+    - /api/stock/goods/**
+
+# Sentinel 网关限流配置
+spring.cloud.sentinel:
+  scg:
+    fallback:
+      mode: response
+      response-status: 429
+      response-body: '{"code":1201,"message":"系统繁忙，请稍后重试"}'
+
+# Actuator 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: info
+    com.seckill.gateway: info
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"

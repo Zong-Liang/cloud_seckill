@@ -1,0 +1,143 @@
+# Prometheus 告警规则
+# 秒杀系统关键指标告警
+
+groups:
+  # 服务健康告警
+  - name: service_health
+    rules:
+      # 服务下线告警
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "服务 {{ $labels.job }} 已下线"
+          description: "服务 {{ $labels.instance }} 已经下线超过1分钟"
+
+      # 服务重启告警
+      - alert: ServiceRestarted
+        expr: changes(process_start_time_seconds[10m]) > 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "服务 {{ $labels.job }} 发生重启"
+          description: "服务在过去10分钟内重启了 {{ $value }} 次"
+
+  # JVM 告警
+  - name: jvm_alerts
+    rules:
+      # JVM 堆内存使用过高
+      - alert: JvmHeapMemoryHigh
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆内存使用过高"
+          description: "服务 {{ $labels.job }} 的 JVM 堆内存使用率超过 85%，当前值: {{ $value }}%"
+
+      # JVM 堆内存使用临界
+      - alert: JvmHeapMemoryCritical
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "JVM 堆内存使用临界"
+          description: "服务 {{ $labels.job }} 的 JVM 堆内存使用率超过 95%，当前值: {{ $value }}%"
+
+      # GC 时间过长
+      - alert: JvmGcTimeTooHigh
+        expr: rate(jvm_gc_pause_seconds_sum[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GC 暂停时间过长"
+          description: "服务 {{ $labels.job }} 的 GC 暂停时间过长，每分钟超过 500ms"
+
+  # HTTP 请求告警
+  - name: http_alerts
+    rules:
+      # 请求错误率过高
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (job)
+            /
+            sum(rate(http_server_requests_seconds_count[5m])) by (job)
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 错误率过高"
+          description: "服务 {{ $labels.job }} 的 5xx 错误率超过 5%，当前值: {{ $value }}%"
+
+      # 请求延迟过高
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, 
+            rate(http_server_requests_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "请求延迟过高"
+          description: "服务的 P99 延迟超过 2 秒"
+
+  # 秒杀业务告警
+  - name: seckill_alerts
+    rules:
+      # 秒杀请求量激增
+      - alert: SeckillRequestSpike
+        expr: rate(http_server_requests_seconds_count{uri=~".*seckill.*"}[1m]) > 1000
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "秒杀请求量激增"
+          description: "秒杀接口每秒请求量超过 1000"
+
+      # 库存扣减失败率
+      - alert: StockDeductFailure
+        expr: |
+          (
+            sum(rate(stock_deduct_failure_total[5m]))
+            /
+            sum(rate(stock_deduct_total[5m]))
+          ) * 100 > 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "库存扣减失败率过高"
+          description: "库存扣减失败率超过 10%"
+
+  # 数据库告警
+  - name: database_alerts
+    rules:
+      # 数据库连接池使用率高
+      - alert: DatabaseConnectionPoolHigh
+        expr: hikaricp_connections_active / hikaricp_connections_max > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "数据库连接池使用率高"
+          description: "服务 {{ $labels.job }} 的连接池使用率超过 80%"
+
+  # Redis 告警
+  - name: redis_alerts
+    rules:
+      # Redis 内存使用高
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis 内存使用率高"
+          description: "Redis 内存使用率超过 85%"

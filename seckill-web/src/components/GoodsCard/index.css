@@ -1,0 +1,17 @@
+.goods-card {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.goods-card .ant-card-cover {
+    margin: 0;
+}
+
+.goods-card .ant-card-body {
+    padding: 12px;
+}
+
+.goods-name {
+    margin-bottom: 8px !important;
+    line-height: 1.4 !important;
+}

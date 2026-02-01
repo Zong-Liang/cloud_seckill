@@ -1,0 +1,32 @@
+.pay-page {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.pay-method-item {
+    display: flex;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: all 0.3s;
+}
+
+.pay-method-item:hover {
+    border-color: #ff4d4f;
+}
+
+.ant-radio-wrapper-checked .pay-method-item {
+    border-color: #ff4d4f;
+    background: #fff1f0;
+}

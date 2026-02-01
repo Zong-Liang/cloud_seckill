@@ -1,0 +1,125 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: seckill-gateway
+  profiles:
+    active: dev
+  config:
+    import: optional:nacos:${spring.application.name}.yml
+
+  # Nacos 配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+      config:
+        server-addr: localhost:8848
+        file-extension: yml
+        namespace: public
+
+    # Gateway 路由配置
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 库存服务路由
+        - id: stock-service
+          uri: lb://seckill-stock
+          predicates:
+            - Path=/api/stock/**
+          filters:
+            - StripPrefix=1
+
+        # 订单服务路由
+        - id: order-service
+          uri: lb://seckill-order
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+
+        # 用户服务路由（同属订单服务）
+        - id: user-service
+          uri: lb://seckill-order
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+
+      # 跨域配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+# 认证配置
+auth:
+  # 白名单（无需登录的接口）
+  whitelist:
+    - /api/user/login
+    - /api/user/register
+    - /api/stock/goods/list
+    - /api/stock/goods/**
+    - /actuator/**
+    - /swagger-ui/**
+    - /v3/api-docs/**
+    - /doc.html
+    - /webjars/**
+
+# JWT 配置
+jwt:
+  secret: seckill-jwt-secret-key-please-change-in-production-2024-very-long-key
+
+# Redis 配置（用于网关 Token 缓存验证）
+spring.data.redis:
+  host: localhost
+  port: 6379
+  password: root
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: debug
+    com.seckill.gateway: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+# Actuator 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,prometheus
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Sentinel 网关限流配置
+spring.cloud.sentinel:
+  transport:
+    dashboard: localhost:8080  # Sentinel Dashboard 地址（可选）
+  scg:
+    fallback:
+      mode: response
+      response-status: 429
+      response-body: '{"code":1201,"message":"系统繁忙，请稍后重试","timestamp":${timestamp}}'
+

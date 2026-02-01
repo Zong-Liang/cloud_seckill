@@ -1,0 +1,159 @@
+server:
+  port: 9001
+
+spring:
+  application:
+    name: seckill-order
+  profiles:
+    active: dev
+  config:
+    import: optional:nacos:${spring.application.name}.yml
+
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3307/seckill_order?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      pool-name: SeckillOrderHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  # Flyway 数据库迁移配置
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+    out-of-order: false
+    table: flyway_schema_history
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: root
+      database: 0
+      timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 5
+
+  # Nacos 配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+      config:
+        server-addr: localhost:8848
+        file-extension: yml
+        namespace: public
+
+# RocketMQ 配置
+rocketmq:
+  name-server: localhost:9876
+  producer:
+    group: seckill-order-producer
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
+    retry-times-when-send-async-failed: 2
+  consumer:
+    group: seckill-order-consumer-group
+
+# 秒杀配置
+seckill:
+  mq:
+    topic: seckill-order-topic
+    timeout-topic: order-timeout-topic
+  order:
+    # 延时级别: 14=10分钟, 16=30分钟（生产环境推荐）
+    timeout-delay-level: 14
+
+# Sentinel 配置
+feign:
+  sentinel:
+    enabled: true  # 开启 Feign 熔断
+
+sentinel:
+  flow:
+    order-qps: 500  # 订单查询 QPS
+    pay-qps: 200    # 支付接口 QPS
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:/mapper/**/*.xml
+  type-aliases-package: com.seckill.order.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Knife4j 配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.seckill.order.controller
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+    enable-swagger-models: true
+    enable-document-manage: true
+    swagger-model-name: 实体类列表
+
+# JWT 配置
+jwt:
+  secret: seckill-jwt-secret-key-please-change-in-production-2024-very-long-key
+  expire-hours: 24
+
+# 日志配置
+logging:
+  level:
+    com.seckill.order: debug
+    com.seckill.order.mapper: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+# Actuator 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0  # 采样率 100%（生产环境建议调低）
+
+# 分布式 ID 配置
+snowflake:
+  datacenter-id: 1
+
+# Zipkin 配置
+zipkin:
+  endpoint: http://localhost:9411/api/v2/spans

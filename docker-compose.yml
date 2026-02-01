@@ -68,7 +68,10 @@ services:
       - "10909:10909"
     environment:
       - NAMESRV_ADDR=rmqnamesrv:9876
-    # ⚠️ 关键配置：强制指定 brokerIP1 为宿主机 IP，解决本地开发连接不上 Broker 的问题
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # ⚠️ 关键配置：brokerIP1 必须设置为宿主机可访问的 IP
+    # Windows Docker Desktop 使用 host.docker.internal 自动解析宿主机 IP
     command: >
       sh -c "echo 'brokerClusterName = DefaultCluster
       brokerName = broker-a
@@ -77,7 +80,8 @@ services:
       fileReservedTime = 48
       brokerRole = ASYNC_MASTER
       flushDiskType = ASYNC_FLUSH
-      brokerIP1 = 127.0.0.1' > ../conf/broker.conf && sh mqbroker -n rmqnamesrv:9876 -c ../conf/broker.conf"
+      autoCreateTopicEnable = true
+      brokerIP1 = host.docker.internal' > ../conf/broker.conf && sh mqbroker -n rmqnamesrv:9876 -c ../conf/broker.conf"
     depends_on:
       - rmqnamesrv
     networks:
@@ -110,6 +114,67 @@ services:
       - "8858:8858"
     networks:
       - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 8. Zipkin (分布式链路追踪)
+  # 访问地址: http://localhost:9411
+  # -----------------------------------------------------------------------------
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: seckill-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 9. Prometheus (监控数据采集)
+  # 访问地址: http://localhost:9090
+  # -----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: seckill-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitor/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitor/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=15d'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - seckill-net
+
+  # -----------------------------------------------------------------------------
+  # 10. Grafana (监控可视化面板)
+  # 访问地址: http://localhost:3000 (默认账号密码 admin/admin)
+  # -----------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: seckill-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitor/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitor/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - seckill-net
+
+volumes:
+  prometheus-data:
+  grafana-data:
 
 networks:
   seckill-net:

@@ -1,0 +1,5 @@
+export { default as request } from './request'
+export * from './user'
+export * from './goods'
+export * from './seckill'
+export * from './order'

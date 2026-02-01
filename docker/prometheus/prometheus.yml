@@ -1,0 +1,62 @@
+# Prometheus 配置文件
+# 监控 Cloud Seckill 微服务
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'seckill-monitor'
+
+# 告警规则文件
+rule_files:
+  # - "rules/*.yml"
+
+# 抓取配置
+scrape_configs:
+  # Prometheus 自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 网关服务监控
+  - job_name: 'seckill-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['seckill-gateway:9000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # 库存服务监控
+  - job_name: 'seckill-stock'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['seckill-stock:9002']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # 订单服务监控
+  - job_name: 'seckill-order'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['seckill-order:9001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # MySQL 监控（需要 mysqld_exporter）
+  # - job_name: 'mysql'
+  #   static_configs:
+  #     - targets: ['mysql-exporter:9104']
+
+  # Redis 监控（需要 redis_exporter）
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
