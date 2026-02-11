@@ -35,15 +35,17 @@ public class JwtUtil {
      *
      * @param userId   用户ID
      * @param username 用户名
+     * @param role     用户角色
      * @return JWT Token
      */
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, String role) {
         Date now = new Date();
         Date expireDate = new Date(now.getTime() + expireTime);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
+                .claim("role", role != null ? role : "user")
                 .issuedAt(now)
                 .expiration(expireDate)
                 .signWith(key)

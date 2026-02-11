@@ -1,20 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Typography, Spin, Result, Button, Card, Statistic, Space, Alert } from 'antd'
+import { Typography, Spin, Result, Button, Card, Steps, Space, Alert, Modal } from 'antd'
 import {
     CheckCircleFilled,
     ClockCircleOutlined,
     ShoppingOutlined,
     HomeOutlined,
+    LoadingOutlined,
+    SyncOutlined,
+    ThunderboltOutlined,
+    ShareAltOutlined,
 } from '@ant-design/icons'
 import { getOrderByNo } from '@/api'
 import { CountDown } from '@/components'
+import ShareCard from '@/components/ShareCard'
 import type { OrderVO } from '@/types'
 import { OrderStatus, OrderStatusText } from '@/types'
 import { formatPrice, formatOrderNo, formatTime } from '@/utils'
 import './index.css'
 
 const { Title, Text, Paragraph } = Typography
+
+/** 排队阶段 */
+enum QueuePhase {
+    QUEUING = 0,      // 排队中
+    DEDUCTING = 1,     // 扣减库存中
+    CREATING = 2,      // 创建订单中
+    SUCCESS = 3,       // 成功
+    FAILED = -1,       // 失败
+}
+
+const PHASE_TEXTS = {
+    [QueuePhase.QUEUING]: '排队中...',
+    [QueuePhase.DEDUCTING]: '扣减库存中...',
+    [QueuePhase.CREATING]: '生成订单中...',
+    [QueuePhase.SUCCESS]: '秒杀成功！',
+    [QueuePhase.FAILED]: '查询超时',
+}
+
+/** 最大轮询次数 */
+const MAX_POLL_COUNT = 30
+/** 轮询间隔(ms) */
+const POLL_INTERVAL = 1000
 
 /**
  * 秒杀结果页
@@ -25,43 +52,128 @@ export default function SeckillResult() {
     const [loading, setLoading] = useState(true)
     const [order, setOrder] = useState<OrderVO | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [phase, setPhase] = useState<QueuePhase>(QueuePhase.QUEUING)
+    const pollCountRef = useRef(0)
+    const timerRef = useRef<ReturnType<typeof setTimeout>>()
+    const [showShare, setShowShare] = useState(false)
 
+    // 模拟阶段推进（排队 → 扣库存 → 创建订单）
     useEffect(() => {
-        if (orderNo) {
-            fetchOrder(orderNo)
+        if (phase === QueuePhase.QUEUING) {
+            const t = setTimeout(() => setPhase(QueuePhase.DEDUCTING), 800)
+            return () => clearTimeout(t)
         }
+        if (phase === QueuePhase.DEDUCTING) {
+            const t = setTimeout(() => setPhase(QueuePhase.CREATING), 1200)
+            return () => clearTimeout(t)
+        }
+    }, [phase])
+
+    // 轮询获取订单
+    const pollOrder = useCallback(async () => {
+        if (!orderNo) return
+
+        pollCountRef.current++
+        try {
+            const result = await getOrderByNo(Number(orderNo))
+            if (result.data) {
+                setOrder(result.data)
+                setPhase(QueuePhase.SUCCESS)
+                setLoading(false)
+                return
+            }
+        } catch {
+            // 订单可能还在创建中
+        }
+
+        if (pollCountRef.current >= MAX_POLL_COUNT) {
+            setPhase(QueuePhase.FAILED)
+            setLoading(false)
+            setError('订单查询超时，请到订单列表中查看')
+            return
+        }
+
+        // 继续轮询
+        timerRef.current = setTimeout(pollOrder, POLL_INTERVAL)
     }, [orderNo])
 
-    const fetchOrder = async (no: string) => {
-        setLoading(true)
-        setError(null)
-        try {
-            const result = await getOrderByNo(Number(no))
-            setOrder(result.data)
-        } catch (err) {
-            // 订单可能还在创建中，稍后重试
-            setTimeout(() => fetchOrder(no), 1000)
-        } finally {
-            setLoading(false)
+    useEffect(() => {
+        pollOrder()
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current)
         }
-    }
+    }, [pollOrder])
 
-    if (loading && !order) {
+    // 排队中动画
+    if (loading && phase !== QueuePhase.FAILED) {
         return (
-            <div className="seckill-result-page min-h-96 flex items-center justify-center">
-                <div className="text-center">
-                    <Spin size="large" />
-                    <Paragraph className="mt-4 text-gray-500">订单创建中，请稍候...</Paragraph>
+            <div className="seckill-result-page">
+                <div className="queue-animation-container">
+                    {/* 排队进度 */}
+                    <div className="queue-header">
+                        <div className="queue-icon-wrapper">
+                            <ThunderboltOutlined className="queue-bolt-icon" />
+                        </div>
+                        <Title level={3} className="mb-2">正在处理您的秒杀请求</Title>
+                        <Text type="secondary">请耐心等待，勿重复操作</Text>
+                    </div>
+
+                    <Steps
+                        current={phase}
+                        className="queue-steps"
+                        items={[
+                            {
+                                title: '排队等待',
+                                description: phase === QueuePhase.QUEUING ? '进行中...' : '完成',
+                                icon: phase === QueuePhase.QUEUING
+                                    ? <LoadingOutlined className="text-orange-500" />
+                                    : <CheckCircleFilled className="text-green-500" />,
+                            },
+                            {
+                                title: '扣减库存',
+                                description: phase === QueuePhase.DEDUCTING ? '进行中...'
+                                    : phase > QueuePhase.DEDUCTING ? '完成' : '等待中',
+                                icon: phase === QueuePhase.DEDUCTING
+                                    ? <SyncOutlined spin className="text-blue-500" />
+                                    : phase > QueuePhase.DEDUCTING
+                                        ? <CheckCircleFilled className="text-green-500" />
+                                        : <ClockCircleOutlined className="text-gray-300" />,
+                            },
+                            {
+                                title: '生成订单',
+                                description: phase === QueuePhase.CREATING ? '进行中...'
+                                    : phase > QueuePhase.CREATING ? '完成' : '等待中',
+                                icon: phase === QueuePhase.CREATING
+                                    ? <SyncOutlined spin className="text-blue-500" />
+                                    : phase > QueuePhase.CREATING
+                                        ? <CheckCircleFilled className="text-green-500" />
+                                        : <ClockCircleOutlined className="text-gray-300" />,
+                            },
+                        ]}
+                    />
+
+                    {/* 进度条 */}
+                    <div className="queue-progress-bar">
+                        <div
+                            className="queue-progress-fill"
+                            style={{ width: `${Math.min((phase + 1) * 33, 100)}%` }}
+                        />
+                    </div>
+
+                    <Text type="secondary" className="queue-tip">
+                        {PHASE_TEXTS[phase]} (已等待 {pollCountRef.current}s)
+                    </Text>
                 </div>
             </div>
         )
     }
 
+    // 超时/失败
     if (error || !order) {
         return (
             <Result
                 status="warning"
-                title="订单查询失败"
+                title="订单查询超时"
                 subTitle="请稍后在订单列表中查看"
                 extra={[
                     <Button key="home" onClick={() => navigate('/')}>
@@ -81,7 +193,7 @@ export default function SeckillResult() {
     return (
         <div className="seckill-result-page">
             {/* 成功提示 */}
-            <div className="success-banner bg-gradient-to-r from-green-400 to-green-600 rounded-2xl p-8 text-white text-center mb-6">
+            <div className="success-banner bg-gradient-to-r from-green-400 to-green-600 rounded-2xl p-8 text-white text-center mb-6 success-entrance">
                 <CheckCircleFilled className="text-6xl mb-4" />
                 <Title level={2} className="text-white mb-2">
                     🎉 恭喜，秒杀成功！
@@ -152,7 +264,7 @@ export default function SeckillResult() {
                                     endTime={payDeadline}
                                     prefix="剩余"
                                     size="small"
-                                    onEnd={() => fetchOrder(String(order.orderNo))}
+                                    onEnd={() => pollOrder()}
                                 />
                             </>
                         )}
@@ -176,6 +288,14 @@ export default function SeckillResult() {
                 )}
                 <Button
                     size="large"
+                    icon={<ShareAltOutlined />}
+                    onClick={() => setShowShare(true)}
+                    className="h-12 px-8"
+                >
+                    分享战绩
+                </Button>
+                <Button
+                    size="large"
                     onClick={() => navigate('/orders')}
                     className="h-12 px-8"
                 >
@@ -190,6 +310,18 @@ export default function SeckillResult() {
                     继续抢购
                 </Button>
             </div>
+
+            {/* 分享弹窗 */}
+            <Modal
+                title="分享秒杀战绩"
+                open={showShare}
+                onCancel={() => setShowShare(false)}
+                footer={null}
+                width={420}
+                centered
+            >
+                <ShareCard order={order} />
+            </Modal>
         </div>
     )
 }

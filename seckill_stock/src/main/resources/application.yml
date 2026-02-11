@@ -1,5 +1,6 @@
 server:
   port: 9002
+  shutdown: graceful
 
 spring:
   application:
@@ -90,7 +91,7 @@ mybatis-plus:
   type-aliases-package: com.seckill.stock.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       id-type: auto
@@ -147,3 +148,7 @@ snowflake:
 # Zipkin 配置
 zipkin:
   endpoint: http://localhost:9411/api/v2/spans
+
+# 优雅停机
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s

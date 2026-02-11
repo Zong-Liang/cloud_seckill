@@ -3,6 +3,7 @@ package com.seckill.order.controller;
 import com.seckill.common.exception.BusinessException;
 import com.seckill.common.result.Result;
 import com.seckill.common.result.ResultCode;
+import com.seckill.order.compensation.CompensationTaskService;
 import com.seckill.order.feign.StockFeignClient;
 import com.seckill.order.security.UserContext;
 import com.seckill.order.service.OrderService;
@@ -28,12 +29,13 @@ import java.util.List;
 @Slf4j
 @Tag(name = "订单接口", description = "秒杀订单相关接口")
 @RestController
-@RequestMapping("/order/order")
+@RequestMapping("/order")
 @RequiredArgsConstructor
 public class OrderController {
 
     private final OrderService orderService;
     private final StockFeignClient stockFeignClient;
+    private final CompensationTaskService compensationTaskService;
 
     @Operation(summary = "查询当前用户订单列表")
     @GetMapping("/list")
@@ -86,7 +88,7 @@ public class OrderController {
         return Result.error(ResultCode.SYSTEM_ERROR.getCode(), "支付失败");
     }
 
-    @Operation(summary = "取消订单", description = "取消未支付的订单并回滚库存")
+    @Operation(summary = "取消订单", description = "取消未支付的订单并回滚库存、清除秒杀标记")
     @Parameter(name = "orderNo", description = "订单号", required = true)
     @PostMapping("/cancel/{orderNo}")
     public Result<Boolean> cancelOrder(@PathVariable("orderNo") Long orderNo) {
@@ -98,7 +100,7 @@ public class OrderController {
             throw new BusinessException(ResultCode.ORDER_NOT_EXIST);
         }
 
-        // 2. 取消订单
+        // 2. 取消订单（更新状态）
         boolean success = orderService.cancelOrder(orderNo);
         if (success) {
             // 3. 回滚库存
@@ -106,8 +108,19 @@ public class OrderController {
                 stockFeignClient.rollbackStock(order.getGoodsId(), order.getGoodsCount());
                 log.info("订单取消成功并回滚库存 - orderNo: {}", orderNo);
             } catch (Exception e) {
-                log.error("库存回滚失败，将由补偿任务处理 - orderNo: {}", orderNo, e);
+                log.error("库存回滚失败，创建补偿任务 - orderNo: {}", orderNo, e);
+                compensationTaskService.createStockRollbackTask(
+                        order.getGoodsId(), order.getGoodsCount());
             }
+
+            // 4. 清除秒杀标记（允许用户重新秒杀）
+            try {
+                stockFeignClient.removeKilledMark(order.getUserId(), order.getGoodsId());
+                log.info("秒杀标记已清除 - userId: {}, goodsId: {}", order.getUserId(), order.getGoodsId());
+            } catch (Exception e) {
+                log.error("清除秒杀标记失败 - userId: {}, goodsId: {}", order.getUserId(), order.getGoodsId(), e);
+            }
+
             return Result.success("订单已取消", true);
         }
         return Result.error(ResultCode.SYSTEM_ERROR.getCode(), "取消订单失败");

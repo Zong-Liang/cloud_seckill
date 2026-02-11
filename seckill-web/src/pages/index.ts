@@ -8,3 +8,6 @@ export { default as OrderList } from './OrderList'
 export { default as OrderDetail } from './OrderDetail'
 export { default as Pay } from './Pay'
 export { default as Profile } from './Profile'
+export { default as AddressList } from './AddressList'
+export { default as Favorites } from './Favorites'
+

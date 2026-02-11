@@ -13,10 +13,10 @@ import {
 } from 'antd'
 import { HomeOutlined, FireOutlined } from '@ant-design/icons'
 import { getGoodsDetail } from '@/api'
-import { CountDown, SeckillButton } from '@/components'
+import { CountDown, SeckillButton, FavoriteButton, ReminderButton } from '@/components'
 import type { GoodsVO } from '@/types'
 import { GoodsStatus, GoodsStatusColor, GoodsStatusText } from '@/types'
-import { formatPrice, calcDiscount, formatTime } from '@/utils'
+import { formatPrice, calcDiscount, formatTime, getRealStatus } from '@/utils'
 import './index.css'
 
 const { Title, Text, Paragraph } = Typography
@@ -30,30 +30,30 @@ export default function GoodsDetail() {
     const [goods, setGoods] = useState<GoodsVO | null>(null)
     const [error, setError] = useState<string | null>(null)
 
+    const fetchGoods = async (goodsId: number, showLoading = true) => {
+        if (showLoading) setLoading(true)
+        setError(null)
+        try {
+            const result = await getGoodsDetail(goodsId)
+            setGoods(result.data)
+        } catch (err) {
+            if (showLoading) setError('获取商品详情失败')
+            console.error(err)
+        } finally {
+            if (showLoading) setLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (id) {
             fetchGoods(Number(id))
         }
     }, [id])
 
-    const fetchGoods = async (goodsId: number) => {
-        setLoading(true)
-        setError(null)
-        try {
-            const result = await getGoodsDetail(goodsId)
-            setGoods(result.data)
-        } catch (err) {
-            setError('获取商品详情失败')
-            console.error(err)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    // 刷新商品（倒计时结束时）
+    // 刷新商品（倒计时结束时），静默刷新不显示 loading
     const handleRefresh = () => {
         if (id) {
-            fetchGoods(Number(id))
+            fetchGoods(Number(id), false)
         }
     }
 
@@ -78,7 +78,7 @@ export default function GoodsDetail() {
     }
 
     const discount = calcDiscount(goods.goodsPrice, goods.seckillPrice)
-    const status = goods.status as GoodsStatus
+    const status = getRealStatus(goods)
 
     return (
         <div className="goods-detail-page">
@@ -135,9 +135,12 @@ export default function GoodsDetail() {
                         </div>
 
                         {/* 商品名称 */}
-                        <Title level={2} className="mb-2">
-                            {goods.goodsName}
-                        </Title>
+                        <div className="flex items-start gap-3">
+                            <Title level={2} className="mb-2 flex-1">
+                                {goods.goodsName}
+                            </Title>
+                            <FavoriteButton goodsId={goods.id} size={28} className="mt-2" />
+                        </div>
                         <Text type="secondary" className="mb-4">
                             {goods.goodsTitle}
                         </Text>
@@ -195,8 +198,7 @@ export default function GoodsDetail() {
                             )}
                             {status === GoodsStatus.NOT_STARTED && (
                                 <CountDown
-                                    endTime={goods.endTime}
-                                    startTime={goods.startTime}
+                                    endTime={goods.startTime}
                                     prefix="距开始"
                                     size="large"
                                     onEnd={handleRefresh}
@@ -205,8 +207,15 @@ export default function GoodsDetail() {
                         </div>
 
                         {/* 秒杀按钮 */}
-                        <div className="mt-auto">
+                        <div className="mt-auto flex gap-3">
                             <SeckillButton goods={goods} size="large" />
+                            {status === GoodsStatus.NOT_STARTED && (
+                                <ReminderButton
+                                    goodsId={goods.id}
+                                    goodsName={goods.goodsName}
+                                    startTime={goods.startTime}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

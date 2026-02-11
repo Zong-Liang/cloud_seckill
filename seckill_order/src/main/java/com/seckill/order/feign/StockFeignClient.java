@@ -26,31 +26,45 @@ import org.springframework.web.bind.annotation.RequestParam;
 @FeignClient(name = "seckill-stock", fallbackFactory = StockFeignFallbackFactory.class)
 public interface StockFeignClient {
 
-    /**
-     * 回滚库存
-     * <p>
-     * 当订单取消或超时时调用，回滚 Redis 和 MySQL 库存
-     * </p>
-     *
-     * @param goodsId 商品ID
-     * @param count   回滚数量
-     * @return 操作结果
-     */
-    @PostMapping("/stock/rollback")
-    Result<Boolean> rollbackStock(@RequestParam("goodsId") Long goodsId,
-            @RequestParam("count") Integer count);
+        /**
+         * 回滚库存
+         * <p>
+         * 当订单取消或超时时调用，回滚 Redis 和 MySQL 库存
+         * </p>
+         *
+         * @param goodsId 商品ID
+         * @param count   回滚数量
+         * @return 操作结果
+         */
+        @PostMapping("/stock/rollback")
+        Result<Boolean> rollbackStock(@RequestParam("goodsId") Long goodsId,
+                        @RequestParam("count") Integer count);
 
-    /**
-     * 同步库存到 MySQL
-     * <p>
-     * Redis 扣减成功后，异步同步到 MySQL
-     * </p>
-     *
-     * @param goodsId 商品ID
-     * @param count   扣减数量
-     * @return 操作结果
-     */
-    @PostMapping("/stock/sync/deduct")
-    Result<Boolean> syncDeductStock(@RequestParam("goodsId") Long goodsId,
-            @RequestParam("count") Integer count);
+        /**
+         * 同步库存到 MySQL
+         * <p>
+         * Redis 扣减成功后，异步同步到 MySQL
+         * </p>
+         *
+         * @param goodsId 商品ID
+         * @param count   扣减数量
+         * @return 操作结果
+         */
+        @PostMapping("/stock/sync/deduct")
+        Result<Boolean> syncDeductStock(@RequestParam("goodsId") Long goodsId,
+                        @RequestParam("count") Integer count);
+
+        /**
+         * 清除秒杀标记
+         * <p>
+         * 订单取消后清除用户的秒杀标记，允许重新秒杀
+         * </p>
+         *
+         * @param userId  用户ID
+         * @param goodsId 商品ID
+         * @return 操作结果
+         */
+        @PostMapping("/stock/killed-mark/remove")
+        Result<Void> removeKilledMark(@RequestParam("userId") Long userId,
+                        @RequestParam("goodsId") Long goodsId);
 }

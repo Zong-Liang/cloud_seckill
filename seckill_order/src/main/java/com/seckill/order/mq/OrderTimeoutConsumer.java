@@ -3,6 +3,7 @@ package com.seckill.order.mq;
 import com.alibaba.fastjson.JSON;
 import com.seckill.common.constant.OrderStatus;
 import com.seckill.common.dto.OrderTimeoutMessage;
+import com.seckill.order.compensation.CompensationTaskService;
 import com.seckill.order.entity.SeckillOrder;
 import com.seckill.order.feign.StockFeignClient;
 import com.seckill.order.service.OrderService;
@@ -39,6 +40,7 @@ public class OrderTimeoutConsumer implements RocketMQListener<String> {
 
     private final OrderService orderService;
     private final StockFeignClient stockFeignClient;
+    private final CompensationTaskService compensationTaskService;
 
     /**
      * 订单未支付判断条件
@@ -84,7 +86,10 @@ public class OrderTimeoutConsumer implements RocketMQListener<String> {
                             log.info("订单超时处理完成，库存已回滚 - orderNo: {}, goodsId: {}, count: {}",
                                     orderNo, o.getGoodsId(), o.getGoodsCount());
                         } catch (Exception e) {
-                            log.error("回滚库存失败 - orderNo: {}, goodsId: {}", orderNo, o.getGoodsId(), e);
+                            log.error("回滚库存失败，创建补偿任务 - orderNo: {}, goodsId: {}", orderNo, o.getGoodsId(), e);
+                            // 创建补偿任务，等待后续自动重试
+                            compensationTaskService.createStockRollbackTask(
+                                    o.getGoodsId(), o.getGoodsCount());
                         }
                     });
         };

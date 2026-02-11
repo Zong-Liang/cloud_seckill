@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { FireOutlined } from '@ant-design/icons'
 import type { GoodsVO } from '@/types'
 import { GoodsStatus, GoodsStatusColor, GoodsStatusText } from '@/types'
-import { formatPrice, calcDiscount } from '@/utils'
+import { formatPrice, calcDiscount, getRealStatus } from '@/utils'
 import CountDown from '../CountDown'
+import FavoriteButton from '../FavoriteButton'
 import './index.css'
 
 const { Text, Title } = Typography
@@ -26,9 +27,11 @@ export default function GoodsCard({ goods }: GoodsCardProps) {
     // 计算库存进度
     const stockPercent = Math.min(100, Math.max(0, (goods.stockCount / 100) * 100))
 
+    // 根据时间动态计算状态
+    const status = getRealStatus(goods)
+
     // 获取状态标签
     const getStatusTag = () => {
-        const status = goods.status as GoodsStatus
         const icon = status === GoodsStatus.IN_PROGRESS ? <FireOutlined /> : undefined
         return (
             <Tag color={GoodsStatusColor[status]} icon={icon}>
@@ -55,6 +58,10 @@ export default function GoodsCard({ goods }: GoodsCardProps) {
                             省 {discount}%
                         </div>
                     )}
+                    {/* 收藏按钮 */}
+                    <div className="absolute top-2 right-2 z-10 bg-white/80 rounded-full p-1">
+                        <FavoriteButton goodsId={goods.id} size={18} />
+                    </div>
                 </div>
             }
             onClick={() => navigate(`/goods/${goods.id}`)}
@@ -97,17 +104,16 @@ export default function GoodsCard({ goods }: GoodsCardProps) {
                 </div>
 
                 {/* 倒计时 */}
-                {goods.status === GoodsStatus.IN_PROGRESS && (
+                {status === GoodsStatus.IN_PROGRESS && (
                     <CountDown
                         endTime={goods.endTime}
                         prefix="剩余"
                         size="small"
                     />
                 )}
-                {goods.status === GoodsStatus.NOT_STARTED && (
+                {status === GoodsStatus.NOT_STARTED && (
                     <CountDown
-                        endTime={goods.endTime}
-                        startTime={goods.startTime}
+                        endTime={goods.startTime}
                         prefix="距开始"
                         size="small"
                     />

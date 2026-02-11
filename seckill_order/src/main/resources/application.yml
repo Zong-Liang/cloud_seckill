@@ -1,5 +1,6 @@
 server:
   port: 9001
+  shutdown: graceful
 
 spring:
   application:
@@ -95,7 +96,7 @@ mybatis-plus:
   type-aliases-package: com.seckill.order.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       id-type: auto
@@ -126,8 +127,12 @@ knife4j:
 
 # JWT 配置
 jwt:
-  secret: seckill-jwt-secret-key-please-change-in-production-2024-very-long-key
+  secret: ${JWT_SECRET:seckill-jwt-secret-key-please-change-in-production-2024-very-long-key}
   expire-hours: 24
+
+# 优雅停机
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s
 
 # 日志配置
 logging:

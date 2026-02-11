@@ -15,6 +15,8 @@ const OrderList = lazy(() => import('@/pages/OrderList'))
 const OrderDetail = lazy(() => import('@/pages/OrderDetail'))
 const Pay = lazy(() => import('@/pages/Pay'))
 const Profile = lazy(() => import('@/pages/Profile'))
+const AddressList = lazy(() => import('@/pages/AddressList'))
+const Favorites = lazy(() => import('@/pages/Favorites'))
 
 // 加载占位组件
 const PageLoading = () => (
@@ -127,6 +129,26 @@ export default function AppRouter() {
                         element={
                             <Suspense fallback={<PageLoading />}>
                                 <Profile />
+                            </Suspense>
+                        }
+                    />
+
+                    {/* 收货地址 */}
+                    <Route
+                        path="address"
+                        element={
+                            <Suspense fallback={<PageLoading />}>
+                                <AddressList />
+                            </Suspense>
+                        }
+                    />
+
+                    {/* 我的收藏 */}
+                    <Route
+                        path="favorites"
+                        element={
+                            <Suspense fallback={<PageLoading />}>
+                                <Favorites />
                             </Suspense>
                         }
                     />

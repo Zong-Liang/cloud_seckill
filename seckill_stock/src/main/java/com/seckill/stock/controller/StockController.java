@@ -2,6 +2,7 @@ package com.seckill.stock.controller;
 
 import com.seckill.common.result.Result;
 import com.seckill.stock.service.GoodsService;
+import com.seckill.stock.service.SeckillService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class StockController {
 
     private final GoodsService goodsService;
+    private final SeckillService seckillService;
 
     @Operation(summary = "回滚库存", description = "回滚 Redis 和 MySQL 库存（订单超时/取消时调用）")
     @Parameter(name = "goodsId", description = "商品ID", required = true)
@@ -47,6 +49,17 @@ public class StockController {
         log.info("收到库存同步扣减请求 - goodsId: {}, count: {}", goodsId, count);
         boolean success = goodsService.deductMySQLStock(goodsId, count);
         return Result.success(success);
+    }
+
+    @Operation(summary = "清除秒杀标记", description = "订单取消后清除用户的秒杀标记，允许重新秒杀")
+    @Parameter(name = "userId", description = "用户ID", required = true)
+    @Parameter(name = "goodsId", description = "商品ID", required = true)
+    @PostMapping("/killed-mark/remove")
+    public Result<Void> removeKilledMark(@RequestParam Long userId,
+            @RequestParam Long goodsId) {
+        log.info("收到清除秒杀标记请求 - userId: {}, goodsId: {}", userId, goodsId);
+        seckillService.removeKilledMark(userId, goodsId);
+        return Result.success();
     }
 
     @Operation(summary = "查询商品库存", description = "查询 Redis 缓存中的库存")

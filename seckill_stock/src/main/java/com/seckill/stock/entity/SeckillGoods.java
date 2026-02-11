@@ -94,4 +94,10 @@ public class SeckillGoods implements Serializable {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    /**
+     * 逻辑删除: 0-未删除, 1-已删除
+     */
+    @TableLogic
+    private Integer deleted;
 }

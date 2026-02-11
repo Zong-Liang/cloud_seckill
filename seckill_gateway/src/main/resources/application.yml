@@ -55,7 +55,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "*"
+            allowedOriginPatterns: ${CORS_ORIGINS:*}
             allowedMethods:
               - GET
               - POST
@@ -82,7 +82,7 @@ auth:
 
 # JWT 配置
 jwt:
-  secret: seckill-jwt-secret-key-please-change-in-production-2024-very-long-key
+  secret: ${JWT_SECRET:seckill-jwt-secret-key-please-change-in-production-2024-very-long-key}
 
 # Redis 配置（用于网关 Token 缓存验证）
 spring.data.redis:

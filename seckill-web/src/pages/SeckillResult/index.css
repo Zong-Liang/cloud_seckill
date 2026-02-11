@@ -1,37 +1,111 @@
-.seckill-result-page {
-    animation: fadeIn 0.3s ease-out;
-    max-width: 800px;
+/* ============================================
+   秒杀结果页 - 排队动画
+   ============================================ */
+
+.queue-animation-container {
+    max-width: 600px;
     margin: 0 auto;
+    padding: 48px 24px;
+    text-align: center;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
+.queue-header {
+    margin-bottom: 48px;
+}
+
+/* 闪电图标脉冲动画 */
+.queue-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    background: linear-gradient(135deg, #ff6b35, #f7c948);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: iconPulse 1.5s ease-in-out infinite;
+}
+
+.queue-bolt-icon {
+    font-size: 36px;
+    color: white;
+}
+
+@keyframes iconPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4);
     }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 20px rgba(255, 107, 53, 0);
     }
 }
 
-.success-banner {
-    animation: popIn 0.5s ease-out;
+/* Steps 样式调整 */
+.queue-steps {
+    margin-bottom: 32px;
 }
 
-@keyframes popIn {
+.queue-steps .ant-steps-item-title {
+    font-weight: 600 !important;
+}
+
+/* 进度条 */
+.queue-progress-bar {
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.queue-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b35, #52c41a);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.queue-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.queue-tip {
+    display: block;
+    font-size: 14px;
+}
+
+/* 成功入场动画 */
+.success-entrance {
+    animation: successSlideIn 0.5s ease-out;
+}
+
+@keyframes successSlideIn {
     0% {
         opacity: 0;
-        transform: scale(0.9);
+        transform: translateY(-20px) scale(0.95);
     }
-
-    70% {
-        transform: scale(1.02);
-    }
-
     100% {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
 }

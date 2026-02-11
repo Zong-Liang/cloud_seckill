@@ -95,14 +95,18 @@ export default function Profile() {
                             <Text>去抢购</Text>
                         </div>
                     </Link>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                        <div className="text-2xl mb-2">📍</div>
-                        <Text>收货地址</Text>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                        <div className="text-2xl mb-2">⚙️</div>
-                        <Text>账户设置</Text>
-                    </div>
+                    <Link to="/address">
+                        <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                            <div className="text-2xl mb-2">📍</div>
+                            <Text>收货地址</Text>
+                        </div>
+                    </Link>
+                    <Link to="/favorites">
+                        <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                            <div className="text-2xl mb-2">❤️</div>
+                            <Text>我的收藏</Text>
+                        </div>
+                    </Link>
                 </div>
             </Card>
 

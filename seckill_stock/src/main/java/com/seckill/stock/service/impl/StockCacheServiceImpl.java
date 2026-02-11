@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 
 /**
  * 库存缓存服务实现
@@ -35,7 +34,7 @@ public class StockCacheServiceImpl implements StockCacheService {
     private final StringRedisTemplate redisTemplate;
 
     /**
-     * Lua 脚本：原子性扣减库存
+     * Lua 脚本：原子性扣减库存（static 缓存，复用 SHA1）
      */
     private static final String DEDUCT_STOCK_LUA = "local stock = redis.call('get', KEYS[1]) " +
             "if stock == false then return -2 end " +
@@ -56,11 +55,12 @@ public class StockCacheServiceImpl implements StockCacheService {
             "return newStock";
 
     /**
-     * 脚本执行器（函数式风格）
+     * 预编译脚本对象（避免每次 new）
      */
-    private final BiFunction<String, String, Long> luaExecutor = (script, args) -> {
-        throw new UnsupportedOperationException("Use executeScript method");
-    };
+    private static final DefaultRedisScript<Long> DEDUCT_SCRIPT = new DefaultRedisScript<>(DEDUCT_STOCK_LUA,
+            Long.class);
+    private static final DefaultRedisScript<Long> ROLLBACK_SCRIPT = new DefaultRedisScript<>(ROLLBACK_STOCK_LUA,
+            Long.class);
 
     @Override
     public void initStock(Long goodsId, Integer stockCount) {
@@ -76,7 +76,7 @@ public class StockCacheServiceImpl implements StockCacheService {
     @Override
     public Long deductStock(Long goodsId, Integer count) {
         String key = RedisKeyConstants.stockKey(goodsId);
-        Long result = executeScript(DEDUCT_STOCK_LUA, key, count.toString());
+        Long result = redisTemplate.execute(DEDUCT_SCRIPT, Collections.singletonList(key), count.toString());
 
         // 使用 Optional 处理日志
         Optional.ofNullable(result).ifPresent(r -> {
@@ -95,7 +95,7 @@ public class StockCacheServiceImpl implements StockCacheService {
     @Override
     public Long rollbackStock(Long goodsId, Integer count) {
         String key = RedisKeyConstants.stockKey(goodsId);
-        Long result = executeScript(ROLLBACK_STOCK_LUA, key, count.toString());
+        Long result = redisTemplate.execute(ROLLBACK_SCRIPT, Collections.singletonList(key), count.toString());
 
         Optional.ofNullable(result)
                 .filter(r -> r >= 0)
@@ -128,13 +128,5 @@ public class StockCacheServiceImpl implements StockCacheService {
         String key = RedisKeyConstants.stockKey(goodsId);
         redisTemplate.delete(key);
         log.info("删除商品库存缓存 - goodsId: {}", goodsId);
-    }
-
-    /**
-     * 执行 Lua 脚本
-     */
-    private Long executeScript(String scriptContent, String key, String arg) {
-        DefaultRedisScript<Long> script = new DefaultRedisScript<>(scriptContent, Long.class);
-        return redisTemplate.execute(script, Collections.singletonList(key), arg);
     }
 }

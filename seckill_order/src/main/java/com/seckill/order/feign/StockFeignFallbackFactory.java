@@ -48,6 +48,14 @@ public class StockFeignFallbackFactory implements FallbackFactory<StockFeignClie
                 return Result.error(ResultCode.SERVICE_UNAVAILABLE.getCode(),
                         "库存服务暂时不可用，同步操作已记录，稍后自动重试");
             }
+
+            @Override
+            public Result<Void> removeKilledMark(Long userId, Long goodsId) {
+                log.error("清除秒杀标记降级处理 - userId: {}, goodsId: {}, error: {}",
+                        userId, goodsId, cause.getMessage());
+                return Result.error(ResultCode.SERVICE_UNAVAILABLE.getCode(),
+                        "库存服务暂时不可用，清除标记操作已记录");
+            }
         };
     }
 }

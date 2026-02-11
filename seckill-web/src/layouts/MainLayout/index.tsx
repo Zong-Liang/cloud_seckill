@@ -7,6 +7,8 @@ import {
     UserOutlined,
     LogoutOutlined,
     ThunderboltFilled,
+    HeartOutlined,
+    EnvironmentOutlined,
 } from '@ant-design/icons'
 import { useUserStore } from '@/store'
 import type { MenuProps } from 'antd'
@@ -45,6 +47,11 @@ export default function AppLayout() {
             icon: <OrderedListOutlined />,
             label: '我的订单',
         },
+        {
+            key: '/favorites',
+            icon: <HeartOutlined />,
+            label: '我的收藏',
+        },
     ]
 
     // 用户下拉菜单
@@ -60,6 +67,18 @@ export default function AppLayout() {
             icon: <OrderedListOutlined />,
             label: '我的订单',
             onClick: () => navigate('/orders'),
+        },
+        {
+            key: 'favorites',
+            icon: <HeartOutlined />,
+            label: '我的收藏',
+            onClick: () => navigate('/favorites'),
+        },
+        {
+            key: 'address',
+            icon: <EnvironmentOutlined />,
+            label: '收货地址',
+            onClick: () => navigate('/address'),
         },
         {
             type: 'divider',

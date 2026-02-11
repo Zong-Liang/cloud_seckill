@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "用户接口", description = "用户登录注册相关接口")
 @RestController
-@RequestMapping("/user/user")
+@RequestMapping("/user")
 @RequiredArgsConstructor
 public class UserController {
 

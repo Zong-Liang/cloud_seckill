@@ -25,6 +25,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 认证全局过滤器
@@ -60,6 +61,12 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String USER_TOKEN_HEADER = "X-User-Token";
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    /**
+     * 管理员接口路径（需要 admin 角色）
+     */
+    private static final Set<String> ADMIN_PATHS = Set.of(
+            "/api/stock/seckill/init/**");
 
     /**
      * 获取签名密钥
@@ -100,7 +107,17 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange, validationResult.getError(), validationResult.getStatusCode());
         }
 
-        // 4. 将用户信息传递给下游服务
+        // 4. 检查管理员权限
+        if (isAdminPath(path)) {
+            String role = validationResult.getRole();
+            if (!"admin".equals(role)) {
+                log.warn("非管理员访问管理接口: {} - userId: {}, role: {}",
+                        path, validationResult.getUserId(), role);
+                return forbidden(exchange, "无权访问该接口");
+            }
+        }
+
+        // 5. 将用户信息传递给下游服务
         ServerHttpRequest newRequest = request.mutate()
                 .header(USER_TOKEN_HEADER, token)
                 .header(USER_ID_HEADER, String.valueOf(validationResult.getUserId()))
@@ -134,8 +151,9 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             // 提取用户信息
             Long userId = Long.valueOf(claims.getSubject());
             String username = claims.get("username", String.class);
+            String role = claims.get("role", String.class);
 
-            return TokenValidationResult.valid(userId, username);
+            return TokenValidationResult.valid(userId, username, role);
 
         } catch (ExpiredJwtException e) {
             log.warn("Token 已过期: {}", e.getMessage());
@@ -161,6 +179,13 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     }
 
     /**
+     * 检查路径是否需要管理员权限
+     */
+    private boolean isAdminPath(String path) {
+        return ADMIN_PATHS.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+    }
+
+    /**
      * 返回未授权响应
      */
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message, int code) {
@@ -171,6 +196,21 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         String body = String.format(
                 "{\"code\":%d,\"message\":\"%s\",\"data\":null,\"timestamp\":%d}",
                 code, message, System.currentTimeMillis());
+        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
+    }
+
+    /**
+     * 返回禁止访问响应
+     */
+    private Mono<Void> forbidden(ServerWebExchange exchange, String message) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(HttpStatus.FORBIDDEN);
+        response.getHeaders().add("Content-Type", "application/json;charset=UTF-8");
+
+        String body = String.format(
+                "{\"code\":403,\"message\":\"%s\",\"data\":null,\"timestamp\":%d}",
+                message, System.currentTimeMillis());
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
     }
@@ -188,23 +228,26 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         private final boolean valid;
         private final Long userId;
         private final String username;
+        private final String role;
         private final String error;
         private final int statusCode;
 
-        private TokenValidationResult(boolean valid, Long userId, String username, String error, int statusCode) {
+        private TokenValidationResult(boolean valid, Long userId, String username, String role, String error,
+                int statusCode) {
             this.valid = valid;
             this.userId = userId;
             this.username = username;
+            this.role = role;
             this.error = error;
             this.statusCode = statusCode;
         }
 
-        public static TokenValidationResult valid(Long userId, String username) {
-            return new TokenValidationResult(true, userId, username, null, 200);
+        public static TokenValidationResult valid(Long userId, String username, String role) {
+            return new TokenValidationResult(true, userId, username, role, null, 200);
         }
 
         public static TokenValidationResult invalid(String error, int statusCode) {
-            return new TokenValidationResult(false, null, null, error, statusCode);
+            return new TokenValidationResult(false, null, null, null, error, statusCode);
         }
 
         public boolean isValid() {
@@ -221,6 +264,10 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
         public String getError() {
             return error;
+        }
+
+        public String getRole() {
+            return role;
         }
 
         public int getStatusCode() {

@@ -12,6 +12,16 @@ services:
       - "8848:8848"
       - "9848:9848" # gRPC 端口 (必须映射，否则 Spring Boot 3 报错)
       - "9849:9849"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/v1/ns/instance/list?serviceName=test"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks:
       - seckill-net
 
@@ -30,6 +40,16 @@ services:
     command: --default-authentication-plugin=mysql_native_password
     volumes:
       - ./data/mysql:/var/lib/mysql # 数据持久化挂载到当前目录下
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - seckill-net
 
@@ -42,6 +62,16 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --requirepass "root" --appendonly yes
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "root", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - seckill-net
 
@@ -54,6 +84,11 @@ services:
     ports:
       - "9876:9876"
     command: sh mqnamesrv
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     networks:
       - seckill-net
 
@@ -68,6 +103,7 @@ services:
       - "10909:10909"
     environment:
       - NAMESRV_ADDR=rmqnamesrv:9876
+      - JAVA_OPT_EXT=-server -Xms512m -Xmx512m -Xmn256m
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # ⚠️ 关键配置：brokerIP1 必须设置为宿主机可访问的 IP
@@ -84,6 +120,11 @@ services:
       brokerIP1 = host.docker.internal' > ../conf/broker.conf && sh mqbroker -n rmqnamesrv:9876 -c ../conf/broker.conf"
     depends_on:
       - rmqnamesrv
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
     networks:
       - seckill-net
 
@@ -152,13 +193,13 @@ services:
 
   # -----------------------------------------------------------------------------
   # 10. Grafana (监控可视化面板)
-  # 访问地址: http://localhost:3000 (默认账号密码 admin/admin)
+  # 访问地址: http://localhost:3200 (默认账号密码 admin/admin)
   # -----------------------------------------------------------------------------
   grafana:
     image: grafana/grafana:10.2.2
     container_name: seckill-grafana
     ports:
-      - "3000:3000"
+      - "3200:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

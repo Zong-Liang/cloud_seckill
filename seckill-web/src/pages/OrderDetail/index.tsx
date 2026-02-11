@@ -25,7 +25,7 @@ import {
     SmileOutlined,
 } from '@ant-design/icons'
 import { getOrderByNo, cancelOrder, payOrder } from '@/api'
-import { CountDown } from '@/components'
+import { CountDown, LogisticsTimeline } from '@/components'
 import type { OrderVO } from '@/types'
 import { OrderStatus, OrderStatusText, OrderStatusColor, OrderChannelText } from '@/types'
 import { formatPrice, formatOrderNo, formatTime } from '@/utils'
@@ -270,6 +270,13 @@ export default function OrderDetail() {
                     )}
                 </Descriptions>
             </Card>
+
+            {/* 物流信息 */}
+            {(status === OrderStatus.PAID || status === OrderStatus.SHIPPED || status === OrderStatus.RECEIVED) && (
+                <Card title="物流信息" className="mb-6">
+                    <LogisticsTimeline order={order} />
+                </Card>
+            )}
 
             {/* 操作按钮 */}
             <div className="flex justify-center gap-4">

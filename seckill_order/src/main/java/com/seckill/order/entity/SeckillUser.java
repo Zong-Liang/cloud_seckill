@@ -57,6 +57,11 @@ public class SeckillUser implements Serializable {
     private Integer status;
 
     /**
+     * 角色: user-普通用户, admin-管理员
+     */
+    private String role;
+
+    /**
      * 登录次数
      */
     private Integer loginCount;
@@ -77,4 +82,10 @@ public class SeckillUser implements Serializable {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    /**
+     * 逻辑删除: 0-未删除, 1-已删除
+     */
+    @TableLogic
+    private Integer deleted;
 }

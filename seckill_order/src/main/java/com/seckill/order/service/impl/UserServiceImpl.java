@@ -47,17 +47,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, SeckillUser> implem
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
 
-        // 2. 验证密码 - 添加调试日志
-        log.info("=== 密码验证调试 ===");
-        log.info("输入密码: {}", dto.getPassword());
-        log.info("数据库哈希: {}", user.getPassword());
-
-        // 测试直接生成的哈希
-        String testHash = passwordEncoder.encode("123456");
-        log.info("123456 新生成的哈希: {}", testHash);
-        log.info("验证输入密码是否匹配数据库哈希: {}", passwordEncoder.matches(dto.getPassword(), user.getPassword()));
-        log.info("验证 123456 是否匹配数据库哈希: {}", passwordEncoder.matches("123456", user.getPassword()));
-
+        // 2. 验证密码
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             log.warn("密码错误: {}", dto.getUsername());
             throw new BusinessException(ResultCode.PASSWORD_ERROR);
@@ -75,7 +65,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, SeckillUser> implem
         this.updateById(user);
 
         // 5. 生成 Token
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
 
         log.info("用户登录成功: {}", dto.getUsername());
         return toVO(user, token);
@@ -106,12 +96,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, SeckillUser> implem
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setNickname(StrUtil.isBlank(dto.getNickname()) ? dto.getUsername() : dto.getNickname());
         user.setPhone(dto.getPhone());
+        user.setRole("user");
         user.setStatus(UserStatus.NORMAL);
         user.setLoginCount(0);
         this.save(user);
 
         // 4. 生成 Token
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
 
         log.info("用户注册成功: {}", dto.getUsername());
         return toVO(user, token);

@@ -37,6 +37,9 @@ public class OrderTimeoutProducer {
     @Value("${seckill.order.timeout-minutes:15}")
     private int timeoutMinutes;
 
+    @Value("${seckill.order.timeout-delay-level:14}")
+    private int timeoutDelayLevel;
+
     /**
      * 发送订单超时检测消息
      * <p>
@@ -77,8 +80,8 @@ public class OrderTimeoutProducer {
         try {
             String msgBody = JSON.toJSONString(message);
 
-            // 根据超时分钟数选择延迟级别
-            int delayLevel = getDelayLevel(timeoutMinutes);
+            // 使用配置的延迟级别（优先于计算值）
+            int delayLevel = timeoutDelayLevel;
 
             rocketMQTemplate.syncSend(
                     timeoutTopic,
@@ -89,8 +92,8 @@ public class OrderTimeoutProducer {
                     delayLevel // 延迟级别
             );
 
-            log.info("发送订单超时检测消息成功 - orderNo: {}, delayMinutes: {}, delayLevel: {}",
-                    orderNo, timeoutMinutes, delayLevel);
+            log.info("发送订单超时检测消息成功 - orderNo: {}, delayLevel: {}",
+                    orderNo, delayLevel);
 
         } catch (Exception e) {
             log.error("发送订单超时检测消息失败 - orderNo: {}, error: {}", orderNo, e.getMessage(), e);

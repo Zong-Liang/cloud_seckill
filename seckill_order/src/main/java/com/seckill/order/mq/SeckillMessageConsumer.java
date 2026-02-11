@@ -38,6 +38,7 @@ import java.util.function.Supplier;
 public class SeckillMessageConsumer implements RocketMQListener<String> {
 
     private final OrderService orderService;
+    private final OrderTimeoutProducer orderTimeoutProducer;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -64,6 +65,11 @@ public class SeckillMessageConsumer implements RocketMQListener<String> {
 
             log.info("创建订单成功 - orderNo: {}, userId: {}, goodsId: {}",
                     order.getOrderNo(), order.getUserId(), order.getGoodsId());
+
+            // 发送订单超时延时消息（未支付则自动取消）
+            orderTimeoutProducer.sendTimeoutMessage(
+                    order.getOrderNo(), order.getUserId(),
+                    order.getGoodsId(), order.getGoodsCount());
 
         } catch (Exception e) {
             log.error("处理秒杀消息失败: {}", messageBody, e);

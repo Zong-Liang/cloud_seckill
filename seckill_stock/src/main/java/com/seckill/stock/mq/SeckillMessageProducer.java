@@ -64,13 +64,11 @@ public class SeckillMessageProducer {
             onSuccess.accept(orderNo);
 
         } catch (Exception e) {
-            // MQ发送失败时，记录日志进行降级处理
-            // 实际生产环境可以存入本地消息表，后续补偿
-            log.warn("MQ发送超时，进入降级处理 - orderNo: {}, userId: {}, goodsId: {}, error: {}",
+            // MQ发送失败时，必须抛出异常让调用方感知并回滚
+            // SeckillServiceImpl.doSeckill() 会捕获异常并回滚 Redis 库存 + 秒杀标记
+            log.error("MQ发送失败 - orderNo: {}, userId: {}, goodsId: {}, error: {}",
                     orderNo, message.getUserId(), message.getGoodsId(), e.getMessage());
-            // 降级策略：记录到数据库或Redis，后续补偿处理
-            // 这里暂时只记录日志，不抛出异常，保证秒杀流程可以完成
-            log.info("秒杀订单已记录，等待后续补偿处理 - orderNo: {}", orderNo);
+            throw new RuntimeException("秒杀消息发送失败", e);
         }
     }
 
