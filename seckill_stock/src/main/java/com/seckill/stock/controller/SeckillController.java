@@ -47,10 +47,11 @@ public class SeckillController {
     @Operation(summary = "执行秒杀", description = "核心秒杀接口，返回订单号（带限流保护）")
     @PostMapping("/do")
     @SentinelResource(value = "doSeckill", blockHandler = "doSeckillBlockHandler", blockHandlerClass = SeckillBlockHandler.class, fallback = "doSeckillFallback", fallbackClass = SeckillBlockHandler.class)
-    public Result<Long> doSeckill(@Valid @RequestBody SeckillRequest request) {
+    public Result<String> doSeckill(@Valid @RequestBody SeckillRequest request) {
         log.info("秒杀请求 - userId: {}, goodsId: {}", request.getUserId(), request.getGoodsId());
         Long orderNo = seckillService.doSeckill(request);
-        return Result.success(orderNo);
+        // Long → String 避免前端 JavaScript 精度丢失（雪花 ID 超过 Number.MAX_SAFE_INTEGER）
+        return Result.success(String.valueOf(orderNo));
     }
 
     @Operation(summary = "初始化商品库存", description = "将商品库存加载到Redis缓存")

@@ -1,5 +1,7 @@
 package com.seckill.order.vo;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -25,6 +27,7 @@ public class OrderVO implements Serializable {
     private Long id;
 
     @Schema(description = "订单编号")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long orderNo;
 
     @Schema(description = "用户ID")

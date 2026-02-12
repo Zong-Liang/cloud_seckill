@@ -1,6 +1,8 @@
 package com.seckill.order.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.io.Serial;
@@ -29,7 +31,9 @@ public class SeckillOrder implements Serializable {
 
     /**
      * 订单编号(雪花算法)
+     * 使用 ToStringSerializer 避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long orderNo;
 
     /**

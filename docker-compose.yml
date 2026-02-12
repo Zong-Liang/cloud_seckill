@@ -16,9 +16,15 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '1.0'
+          cpus: "1.0"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/v1/ns/instance/list?serviceName=test"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8848/nacos/v1/ns/instance/list?serviceName=test",
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -44,7 +50,7 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '1.0'
+          cpus: "1.0"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
@@ -66,7 +72,7 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: '0.5'
+          cpus: "0.5"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "root", "ping"]
       interval: 10s
@@ -88,7 +94,7 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '0.5'
+          cpus: "0.5"
     networks:
       - seckill-net
 
@@ -106,25 +112,16 @@ services:
       - JAVA_OPT_EXT=-server -Xms512m -Xmx512m -Xmn256m
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # ⚠️ 关键配置：brokerIP1 必须设置为宿主机可访问的 IP
-    # Windows Docker Desktop 使用 host.docker.internal 自动解析宿主机 IP
-    command: >
-      sh -c "echo 'brokerClusterName = DefaultCluster
-      brokerName = broker-a
-      brokerId = 0
-      deleteWhen = 04
-      fileReservedTime = 48
-      brokerRole = ASYNC_MASTER
-      flushDiskType = ASYNC_FLUSH
-      autoCreateTopicEnable = true
-      brokerIP1 = host.docker.internal' > ../conf/broker.conf && sh mqbroker -n rmqnamesrv:9876 -c ../conf/broker.conf"
+    volumes:
+      - ./docker/rocketmq/broker.conf:/home/rocketmq/rocketmq-5.2.0/conf/broker.conf
+    command: sh mqbroker -n rmqnamesrv:9876 -c ../conf/broker.conf
     depends_on:
       - rmqnamesrv
     deploy:
       resources:
         limits:
           memory: 1G
-          cpus: '1.0'
+          cpus: "1.0"
     networks:
       - seckill-net
 
@@ -182,10 +179,10 @@ services:
       - ./monitor/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
-      - '--storage.tsdb.retention.time=15d'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.retention.time=15d"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

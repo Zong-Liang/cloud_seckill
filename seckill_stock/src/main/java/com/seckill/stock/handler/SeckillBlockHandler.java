@@ -34,7 +34,7 @@ public class SeckillBlockHandler {
      * @param exception 限流异常
      * @return 友好提示
      */
-    public static Result<Long> doSeckillBlockHandler(SeckillRequest request, BlockException exception) {
+    public static Result<String> doSeckillBlockHandler(SeckillRequest request, BlockException exception) {
         log.warn("秒杀接口触发限流 - userId: {}, goodsId: {}, rule: {}",
                 request.getUserId(), request.getGoodsId(), exception.getRule());
         return Result.error(ResultCode.SYSTEM_BUSY);
@@ -47,7 +47,7 @@ public class SeckillBlockHandler {
      * @param throwable 异常
      * @return 降级响应
      */
-    public static Result<Long> doSeckillFallback(SeckillRequest request, Throwable throwable) {
+    public static Result<String> doSeckillFallback(SeckillRequest request, Throwable throwable) {
         log.error("秒杀接口触发熔断 - userId: {}, goodsId: {}, error: {}",
                 request.getUserId(), request.getGoodsId(), throwable.getMessage());
         return Result.error(ResultCode.SERVICE_DEGRADED);

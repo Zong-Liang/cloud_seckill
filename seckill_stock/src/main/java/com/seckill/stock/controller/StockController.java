@@ -3,6 +3,7 @@ package com.seckill.stock.controller;
 import com.seckill.common.result.Result;
 import com.seckill.stock.service.GoodsService;
 import com.seckill.stock.service.SeckillService;
+import com.seckill.stock.vo.GoodsVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -73,7 +74,7 @@ public class StockController {
     @Operation(summary = "查询商品详情库存", description = "查询商品详情和库存信息")
     @Parameter(name = "goodsId", description = "商品ID", required = true)
     @GetMapping("/detail/{goodsId}")
-    public Result<?> getStockDetail(@PathVariable Long goodsId) {
-        return Result.success(goodsService.getById(goodsId));
+    public Result<GoodsVO> getStockDetail(@PathVariable Long goodsId) {
+        return Result.success(goodsService.getGoodsById(goodsId));
     }
 }
